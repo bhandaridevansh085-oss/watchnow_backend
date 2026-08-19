@@ -1,9 +1,6 @@
 const express = require("express");
-
 const Favorite = require("../models/Favorite");
-
-const authMiddleware =
-  require("../middleware/authMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -16,33 +13,28 @@ router.get(
   "/",
   authMiddleware,
   async (req, res) => {
-
     try {
 
-      const favorites =
-        await Favorite.find({
-          user: req.user.id,
-        }).sort({
-          createdAt: -1,
-        });
-
+      const favorites = await Favorite.find({
+        user: req.user.id,
+      }).sort({
+        createdAt: -1,
+      });
 
       res.json(favorites);
 
     } catch (error) {
 
       console.error(
-        "Failed to fetch favorites:",
+        "GET FAVORITES ERROR:",
         error
       );
 
       res.status(500).json({
-        message:
-          "Failed to fetch favorites",
+        message: "Failed to fetch favorites",
       });
 
     }
-
   }
 );
 
@@ -55,7 +47,6 @@ router.post(
   "/",
   authMiddleware,
   async (req, res) => {
-
     try {
 
       const {
@@ -66,6 +57,17 @@ router.post(
         rating,
         type,
       } = req.body;
+
+
+      // Validate movie ID
+
+      if (!movieId) {
+
+        return res.status(400).json({
+          message: "Movie ID is required",
+        });
+
+      }
 
 
       // Validate type
@@ -83,13 +85,13 @@ router.post(
       }
 
 
-      // Check duplicate
+      // Check existing favorite
 
       const existingFavorite =
         await Favorite.findOne({
           user: req.user.id,
-          movieId,
-          type,
+          movieId: movieId,
+          type: type,
         });
 
 
@@ -103,23 +105,31 @@ router.post(
       }
 
 
+      // Create favorite
+
       const favorite =
         await Favorite.create({
 
           user:
             req.user.id,
 
-          movieId,
+          movieId:
+            movieId,
 
-          title,
+          title:
+            title || "",
 
-          poster,
+          poster:
+            poster || null,
 
-          year,
+          year:
+            year || "",
 
-          rating,
+          rating:
+            Number(rating) || 0,
 
-          type,
+          type:
+            type,
 
         });
 
@@ -131,17 +141,32 @@ router.post(
     } catch (error) {
 
       console.error(
-        "Failed to add favorite:",
+        "ADD FAVORITE ERROR:",
         error
       );
 
+
+      // MongoDB duplicate key
+
+      if (
+        error.code === 11000
+      ) {
+
+        return res.status(400).json({
+          message:
+            "Already in favorites",
+        });
+
+      }
+
+
       res.status(500).json({
         message:
+          error.message ||
           "Failed to add favorite",
       });
 
     }
-
   }
 );
 
@@ -150,14 +175,11 @@ router.post(
 // REMOVE FAVORITE
 // ========================================
 //
-// IMPORTANT:
-// Frontend calls:
-//
+// DELETE:
 // /api/favorites/:movieId/:type
 //
 // Example:
-//
-// /api/favorites/969681/movie
+// /api/favorites/1084244/movie
 //
 // ========================================
 
@@ -195,9 +217,11 @@ router.delete(
           user:
             req.user.id,
 
-          movieId,
+          movieId:
+            movieId,
 
-          type,
+          type:
+            type,
 
         });
 
@@ -213,16 +237,14 @@ router.delete(
 
 
       res.json({
-
         message:
           "Favorite removed",
-
       });
 
     } catch (error) {
 
       console.error(
-        "Failed to remove favorite:",
+        "REMOVE FAVORITE ERROR:",
         error
       );
 
@@ -232,7 +254,6 @@ router.delete(
       });
 
     }
-
   }
 );
 
